@@ -1,5 +1,7 @@
 import std.stdio;
 import vibe.d;
+import std.uuid;
+import std.random;
 
 class SockJsClient
 {
@@ -16,9 +18,11 @@ class SockJsClient
 
 	this(string host, string prefix)
 	{
-		//auto random = randomUUID();
-		m_url_send = format("%s/%s/123/adsjdsadjdajs2131312/xhr_send",host,prefix);
-		m_url_poll = format("%s/%s/123/adsjdsadjdajs2131312/xhr",host,prefix);
+		auto randomUUId = randomUUID();
+		auto randomInt = uniform(100,999);
+		auto url = format("%s/%s/%s/%s/xhr",host,prefix,randomInt,randomUUId);
+		m_url_poll = url;
+		m_url_send = format("%s_send",m_url_poll);
 	}
 
 	public void connect() 
@@ -28,6 +32,7 @@ class SockJsClient
 
 	public void send(string message) 
 	{	
+		logInfo(message);
 		requestHTTP(m_url_send,
 			(scope req) {
 				req.method = HTTPMethod.POST;
@@ -62,7 +67,10 @@ class SockJsClient
 			if(onConnect != null) {
 				onConnect();
 			}
+		} else if (content == "h\n") {
+			logInfo("got heartbeat");
 		}
+		StartPoll();
 	}
 	
 
@@ -76,13 +84,12 @@ class SockJsClient
 shared static this()
 {
 	SockJsClient client;
-	string url = "http://localhost:8989/echo/";
 	client = new SockJsClient("http://localhost:8989","echo");
 	
 	client.onConnect = (){
 		logInfo("connected");
 
-		client.send("hello");
+		client.send("hello,dasd");
 	};
 
 	client.connect();

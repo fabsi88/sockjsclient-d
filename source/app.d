@@ -2,14 +2,19 @@ import std.stdio;
 import vibe.d;
 import std.uuid;
 import std.random;
-
+import std.base64;
+import std.regex;
+import xtea.XteaCrypto;
 class SockJsClient
 {
 	
 	private:
 		string m_url_send;
 		string m_url_poll;
-
+		//enum pollRegex = ctRegex!(q"{a\[\"(.*)\"\]}");
+		
+		private XTEA m_xtea;
+		bool m_connected = false;
 	public:
 	
 	alias void delegate() EventOnConnect;
@@ -18,6 +23,7 @@ class SockJsClient
 
 	this(string host, string prefix)
 	{
+		m_xtea = new XTEA([1,2,3,4],64);
 		auto randomUUId = randomUUID();
 		auto randomInt = uniform(100,999);
 		auto url = format("%s/%s/%s/%s/xhr",host,prefix,randomInt,randomUUId);
@@ -61,14 +67,41 @@ class SockJsClient
 	private void onPollResult( HTTPClientResponse res) {
 		//TODO Start Poll am Ende
 		auto content = res.bodyReader.readAllUTF8();
+		
 		logInfo("Response: %s", content);
+		
 		
 		if (content == "o\n") {
 			if(onConnect != null) {
 				onConnect();
+				m_connected = true;
 			}
 		} else if (content == "h\n") {
 			logInfo("got heartbeat");
+		} else {
+			if (m_connected) {
+				logInfo("Connected");
+				logInfo(content);
+				//auto m = match(content,pollRegex);
+				content = chop(content);
+				content = chop(content);
+				content = chop(content);
+				content = chompPrefix(content,"a[\"");
+				logInfo("%s",content);
+				logInfo("%s",content.length);
+				
+				
+				byte[] bytes = cast(byte[])Base64.decode(content);
+				logInfo("'%s'",bytes);
+				m_xtea.Decrypt(bytes,1);
+				logInfo("'%s'",cast(string)bytes);
+				/*
+
+
+				logInfo("'%s'",cast(string)bytes);
+				logInfo("%s",bytes.length);
+			*/
+			}
 		}
 		StartPoll();
 	}
@@ -84,12 +117,13 @@ class SockJsClient
 shared static this()
 {
 	SockJsClient client;
-	client = new SockJsClient("http://localhost:8989","echo");
+	client = new SockJsClient("http://localhost:9876","s4net");
 	
 	client.onConnect = (){
 		logInfo("connected");
 
-		client.send("hello,dasd");
+		client.send("");
+
 	};
 
 	client.connect();

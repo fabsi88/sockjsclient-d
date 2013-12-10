@@ -8,21 +8,26 @@ import std.base64;
 import std.regex;
 import xtea.XteaCrypto;
 import std.string;
+
 class SockJsClient
-{
-	
-	private:
-		string m_url_send;
-		string m_url_poll;
-		enum pollRegex = ctRegex!(q"{a\[\"(.*)\"\]}");
+{	
+private:
+	string m_url_send;
+	string m_url_poll;
+	enum pollRegex = ctRegex!(q"{a\[\"(.*)\"\]}");
 		
-		private XTEA m_xtea;
-		bool m_connected = false;
-	public:
+	private XTEA m_xtea;
+	bool m_connected = false;
+
+public:
 	
 	alias void delegate() EventOnConnect;
+	alias void delegate(string) EventOnData;
+	alias void delegate(string,int) EventOnDisconnect;
 
-	EventOnConnect onConnect;
+	EventOnConnect	OnConnect;
+	EventOnData		OnData;
+	EventOnDisconnect	OnDisconnect;
 
 	private align (1) struct NetworkMsgHeader 
 	{ 
@@ -81,9 +86,9 @@ class SockJsClient
 		
 		if (content == "o\n") 
 		{
-			if(onConnect != null)
+			if(OnConnect != null)
 			{
-				onConnect();
+				OnConnect();
 				m_connected = true;
 			}
 		} else if (content == "h\n") 
@@ -104,12 +109,10 @@ class SockJsClient
 				auto msg = cast(string)bytes[NetworkMsgHeader.sizeof .. NetworkMsgHeader.sizeof + msgHeader.msgLength]; 
 
 				logInfo("%s",msg);
-				return array(msg.splitter(";"));
+				//return array(msg.splitter(";"));
 			}
 		}
 		StartPoll();
 	}
-	
-
 }
 

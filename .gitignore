@@ -1,0 +1,9 @@
+sockjsclient-d.visualdproj
+sockjsclient-d.sln
+.dub/
+*.dll
+*.visualdproj
+sockjsclient-d.v11.suo
+sockjsclient-d_d.exe
+sockjsclient-d_d.exe_cv
+sockjsclient-d_d.pdb

@@ -1,0 +1,13 @@
+{
+	"name": "sockjsclient-d",
+	"description": "An example project skeleton",
+	"homepage": "http://example.org",
+	"copyright": "Copyright (c) 2000, Your Name",
+	"authors": [
+		"Your Name"
+	],
+	"dependencies": {
+		"vibe-d" : "~master",
+		"xtea-d": "~master"
+	}
+}

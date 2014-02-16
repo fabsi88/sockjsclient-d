@@ -4,9 +4,7 @@ import std.stdio;
 import vibe.d;
 import std.uuid;
 import std.random;
-import std.base64;
 import std.regex;
-import xtea.XteaCrypto;
 import std.string;
 
 class SockJsClient
@@ -14,31 +12,21 @@ class SockJsClient
 private:
 	string m_url_send;
 	string m_url_poll;
-	enum pollRegex = ctRegex!(q"{a\[\"(.*)\"\]}");
-		
-	private XTEA m_xtea;
-	bool m_connected = false;
-
+	enum ConnectionState { none, connecting, connected, clientDisconnected, hostDisconnected }
+	ConnectionState m_connState = ConnectionState.none;
 public:
 	
 	alias void delegate() EventOnConnect;
 	alias void delegate(string) EventOnData;
-	alias void delegate(string,int) EventOnDisconnect;
+	alias void delegate(int,string) EventOnDisconnect;
 
 	EventOnConnect	OnConnect;
-	EventOnData		OnData;
+	EventOnData		OnData;	
 	EventOnDisconnect	OnDisconnect;
 
-	private align (1) struct NetworkMsgHeader 
-	{ 
-		align (1):
-		byte msgVersion;
-		uint msgLength;
-	}
-
+	///
 	this(string host, string prefix)
 	{
-		m_xtea = new XTEA([1,2,3,4],64);
 		auto randomUUId = randomUUID();
 		auto randomInt = uniform(100,999);
 		auto url = format("%s/%s/%s/%s/xhr",host,prefix,randomInt,randomUUId);
@@ -46,73 +34,145 @@ public:
 		m_url_send = format("%s_send",m_url_poll);
 	}
 
+	///
 	public void connect() 
 	{
-		StartPoll();
+		if (m_connState == ConnectionState.none) 
+		{
+			m_connState = ConnectionState.connecting;
+			StartPoll();
+		}
+		else
+		{
+			throw new Exception("only one connect allowed");		
+		}
 	}
 
+	///
+	public void disconnect()
+	{
+		//TODO: Should send an message on close url
+		if (m_connState == ConnectionState.connected)
+		{
+			m_connState = ConnectionState.clientDisconnected;
+		}
+		else 
+		{
+			throw new Exception("Not connected");
+		}
+	}
+
+	///
 	public void send(string message) 
 	{	
-		logInfo(message);
-		requestHTTP(m_url_send,
-			(scope req) {
+		if (m_connState == ConnectionState.connected)
+		{
+			logInfo(message);
+			requestHTTP(m_url_send,
+			            (scope HTTPClientRequest req) {
 				req.method = HTTPMethod.POST;
-				req.writeJsonBody([message]);
-			},
-			(scope res) { 
-				onSendResult(res);
-			}
-		);
+				auto prep_message = "[\""~message~"\"]";
+				req.writeBody(cast (ubyte[])prep_message,"text/plain");
+				},
+				(scope res) { 
+					onSendResult(res);
+				}
+			);
+		} 
+		else 
+		{
+			throw new Exception("Not connected");
+		}
 	}
 
+	///
 	private void onSendResult( HTTPClientResponse res) {
-		logInfo("Response: %s", res.bodyReader.readAllUTF8());
+		// TODO: Error handling - HTTP ERROR CODES
+		//logInfo("Response: %s", res.bodyReader.readAllUTF8());
+		if (res.statusCode != 204)
+		{
+			throw new Exception("Send error - Status Code: " ~ to!string(res.statusCode));
+		}
+
 	}
 
+	///
 	private void StartPoll()
 	{
-		requestHTTP(m_url_poll,
-					(scope req) {},
-					(scope res) { 
-						onPollResult(res);
-					}
-		);
+		if (m_connState == ConnectionState.connected || m_connState == ConnectionState.connecting)
+		{
+			requestHTTP(m_url_poll,
+						(scope req) {},
+						(scope res) { 
+							onPollResult(res);
+						}
+			);
+		}
+		else
+		{
+			throw new Exception("Not connected");
+		}
 	}
 
-	private void onPollResult( HTTPClientResponse res) {
-
+	///
+	private void onPollResult( HTTPClientResponse res) 
+	{
 		auto content = res.bodyReader.readAllUTF8();
-		logInfo("Response: %s", content);
+
+		if (m_connState == ConnectionState.clientDisconnected)
+			return;
 		
 		if (content == "o\n") 
 		{
+			m_connState = ConnectionState.connected;
 			if(OnConnect != null)
 			{
 				OnConnect();
-				m_connected = true;
 			}
-		} else if (content == "h\n") 
+		} 
+		else if (content == "h\n") 
 		{
-			logInfo("got heartbeat");
-		} else 
+			//logInfo("got heartbeat");
+		} 
+		else 
 		{
-			if (m_connected) 
+			if (m_connState == ConnectionState.connected) 
 			{
-				logInfo("Connected");
-				auto m = match(content,pollRegex);
-				byte[] bytes = cast(byte[])Base64.decode(m.captures[1]);
-				
-				m_xtea.Decrypt(bytes,1);
-				logInfo("'%s'",bytes);
-				auto msgHeader = cast(NetworkMsgHeader*)&bytes[0]; 
-
-				auto msg = cast(string)bytes[NetworkMsgHeader.sizeof .. NetworkMsgHeader.sizeof + msgHeader.msgLength]; 
-
-				logInfo("%s",msg);
-				//return array(msg.splitter(";"));
+				if (content[0] == 'a')
+				{
+					if (OnData != null)
+					{
+						auto arr = content[3..$-3];
+						foreach(a; splitter(arr,regex(q"{","}")))
+						{
+							OnData(a);
+						}
+					}
+				}
+				else if (content[0] == 'c') 
+				{
+					m_connState = ConnectionState.hostDisconnected;
+					if (OnDisconnect != null)
+					{
+						auto closeString = content[2..$-2];
+						auto closeArray = closeString.split(",");
+						if (closeArray.length >= 2) 
+						{
+							int closeCode = closeArray[0].to!int;
+							string closeMessage = closeArray[1][1..$-1];
+							OnDisconnect(closeCode, closeMessage);
+						}
+						else 
+						{
+							OnDisconnect(0,"");
+						}
+					}
+				}	
 			}
 		}
-		StartPoll();
+		if (m_connState == ConnectionState.connected || m_connState == ConnectionState.connecting)
+			StartPoll();
 	}
+
 }
 

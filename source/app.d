@@ -1,32 +1,23 @@
+import sockjsclient.client;
+import vibe.d:logInfo;
 
-//TODO:
-// Close function onClose
-// Message function onMessage(str)
-// 
 shared static this()
 {
 	SockJsClient client;
-	client = new SockJsClient("http://funok.de:9876","s4net");
+	client = new SockJsClient("http://127.0.0.1:8989","echo");
 	
-	client.onConnect = (){
+	client.OnConnect = (){
 		logInfo("connected");
-
-		client.send("");
-
+		client.send("Hello World!");
 	};
-
-	client.connect();
-
-	//string url = "http://localhost:8989/s4net/123/djashe213121212/";
+	client.OnDisconnect = (int code, string msg) {
+		logInfo("disconnected");
+	};
+	client.OnData = (string _data) {
+		logInfo("OnData rec: %s",_data);
+	};
 	
-	// Nachricht an Server -> POST -> daten
-//	url~="xhr_send";
-	// Poll
-	//url~="xhr";
-	// GET
-	// Body = h -> heartbeat -> nächstes GET
-	// c = close;
-	// a["message","message2"] -> Daten
-	// o beim ersten Call (open)
-	
+	client.connect();	
 }
+
+

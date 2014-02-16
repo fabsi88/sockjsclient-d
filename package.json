@@ -7,7 +7,6 @@
 		"Your Name"
 	],
 	"dependencies": {
-		"vibe-d" : "~master",
-		"xtea-d": "~master"
+		"vibe-d" : "~master"
 	}
 }

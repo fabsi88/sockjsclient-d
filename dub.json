@@ -1,0 +1,13 @@
+{
+	"name": "sockjsclient-d",
+	"description": "sockJsClient for D",
+	"homepage": "https://github.com/fabsi88/sockjsclient-d/",
+	"copyright": "Copyright (c) 2014, Fabian Wallentowitz",
+	"license": "MIT",
+	"authors": [
+		"Fabian Wallentowitz"
+	],
+	"dependencies": {
+		"vibe-d": ">=0.7.19-rc.2"
+	}
+}

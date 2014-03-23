@@ -67,7 +67,6 @@ public:
 	{	
 		if (m_connState == ConnectionState.connected)
 		{
-			logInfo(message);
 			requestHTTP(m_url_send,
 			            (scope HTTPClientRequest req) {
 				req.method = HTTPMethod.POST;

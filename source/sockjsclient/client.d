@@ -20,8 +20,8 @@ public:
 	alias void delegate(string) EventOnData;
 	alias void delegate(int,string) EventOnDisconnect;
 
-	EventOnConnect	OnConnect;
-	EventOnData		OnData;	
+	EventOnConnect		OnConnect;
+	EventOnData			OnData;	
 	EventOnDisconnect	OnDisconnect;
 
 	///
@@ -125,10 +125,8 @@ public:
 		if (content == "o\n") 
 		{
 			m_connState = ConnectionState.connected;
-			if(OnConnect != null)
-			{
-				OnConnect();
-			}
+
+			CallOnConnect();
 		} 
 		else if (content == "h\n") 
 		{
@@ -145,7 +143,7 @@ public:
 						auto arr = content[3..$-3];
 						foreach(a; splitter(arr,regex(q"{","}")))
 						{
-							OnData(a);
+							CallOnData(a);
 						}
 					}
 				}
@@ -160,19 +158,54 @@ public:
 						{
 							int closeCode = closeArray[0].to!int;
 							string closeMessage = closeArray[1][1..$-1];
-							OnDisconnect(closeCode, closeMessage);
+
+							CallOnDisconnect(closeCode, closeMessage);
 						}
 						else 
 						{
-							OnDisconnect(0,"");
+							CallOnDisconnect();
 						}
 					}
 				}	
 			}
 		}
+
 		if (m_connState == ConnectionState.connected || m_connState == ConnectionState.connecting)
 			StartPoll();
 	}
 
+	///
+	private void CallOnConnect()
+	{
+		if(OnConnect)
+		{
+			runTask({
+				OnConnect();
+			});
+		}
+	}
+
+	///
+	private void CallOnData(string _msg)
+	{
+		if(OnData)
+		{
+			runTask({
+				OnData(_msg);
+			});
+		}
+	}
+
+	///
+	private void CallOnDisconnect(int _code=0, string _msg="")
+	{
+		if(OnDisconnect)
+		{
+			runTask({
+				if(OnDisconnect)
+					OnDisconnect(_code, _msg);
+			});
+		}
+	}
 }
 

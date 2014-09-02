@@ -2,12 +2,14 @@
 	"name": "sockjsclient-d",
 	"description": "sockJsClient for D",
 	"homepage": "https://github.com/fabsi88/sockjsclient-d/",
-	"copyright": "Copyright (c) 2014, Fabian Wallentowitz",
+	"copyright": "Copyright (c) 2014, Fabian Wallentowitz, Stephan Dilly",
 	"license": "MIT",
 	"authors": [
-		"Fabian Wallentowitz"
+		"Fabian Wallentowitz",
+		"Stephan Dilly",
 	],
 	"dependencies": {
-		"vibe-d": ">=0.7.19-rc.2"
-	}
+		"vibe-d": ">=0.7.19"
+	},
+	"versions": ["VibeDefaultMain"],
 }

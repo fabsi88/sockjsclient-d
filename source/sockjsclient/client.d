@@ -170,7 +170,11 @@ public:
 		}
 
 		if (m_connState == ConnectionState.connected || m_connState == ConnectionState.connecting)
-			StartPoll();
+		{
+			runTask({
+				StartPoll();
+			});
+		}
 	}
 
 	///

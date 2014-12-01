@@ -24,6 +24,9 @@ public:
 	EventOnData			OnData;	
 	EventOnDisconnect	OnDisconnect;
 
+	@property bool isConnected() const { return m_connState == ConnectionState.connected; }
+	@property bool isConnecting() const { return m_connState == ConnectionState.connecting; }
+
 	///
 	this(string host, string prefix)
 	{
@@ -67,16 +70,18 @@ public:
 	{	
 		if (m_connState == ConnectionState.connected)
 		{
-			requestHTTP(m_url_send,
-			            (scope HTTPClientRequest req) {
-				req.method = HTTPMethod.POST;
-				auto prep_message = "[\""~message~"\"]";
-				req.writeBody(cast (ubyte[])prep_message,"text/plain");
-				},
-				(scope res) { 
-					onSendResult(res);
-				}
-			);
+			runTask({
+				requestHTTP(m_url_send,
+				            (scope HTTPClientRequest req) {
+					req.method = HTTPMethod.POST;
+					auto prep_message = "[\""~message~"\"]";
+					req.writeBody(cast (ubyte[])prep_message,"text/plain");
+					},
+					(scope res) { 
+						onSendResult(res);
+					}
+				);
+			});
 		} 
 		else 
 		{
